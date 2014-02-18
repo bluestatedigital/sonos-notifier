@@ -1,0 +1,19 @@
+{
+  "name": "bsd-sonos-notifier",
+  "version": "0.0.0",
+  "description": "BSD Sonos Notifier thingy",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "sonos",
+    "music",
+    "tunes"
+  ],
+  "author": "Brian Lalor <blalor@bluestatedigital.com>",
+  "license": "BSD-2-Clause",
+  "dependencies": {
+    "sonos-discovery": "git://github.com/jishi/node-sonos-discovery#3cf141a2777d04da2d534e652dabae7c4046e8b5"
+  }
+}
