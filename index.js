@@ -1,4 +1,5 @@
-var util = require("util");
+var util    = require("util");
+var request = require("request");
 
 var discovery = new (require("sonos-discovery"))();
 
@@ -9,6 +10,29 @@ function _dump(label) {
     return function() {
         console.log(">> " + label, util.inspect(arguments, { depth: null, colors: true }));
     };
+}
+
+function publish(event, body) {
+    request(
+        {
+            url: "http://example.com:7000/publish/78f0e717-429e-4c92-8ade-4c3b3698c4a7",
+            method: "POST",
+            json: {
+                event: event,
+                body: body,
+            },
+        },
+        function (err, resp) {
+            // console.log(err, resp, body);
+            if (err) {
+                console.log(["error publishing", event, body]);
+                
+                console.log(resp.statusCode);
+                
+                console.error(err);
+            }
+        }
+    );
 }
 
 // discovery.on("group-volume",    _dump("group-volume")); // not useful
@@ -44,9 +68,21 @@ discovery.on("queue-changed", function(msg) {
     console.log(">> queue-changed event for %s", player.roomName);
     
     player.getQueue(0, undefined, function(succeeded, result) {
+        var pubBody = {
+            queue_items: [],
+        };
+        
         result.items.forEach(function(item) {
             console.log("queue item: “%s” by “%s” on “%s”", item.title, item.artist, item.album);
+            
+            pubBody.queue_items.push({
+                title: item.title,
+                artist: item.artist,
+                album: item.album,
+            });
         });
+        
+        publish("queue-changed", pubBody);
     });
 });
 
@@ -97,7 +133,7 @@ discovery.on("transport-state", function(msg) {
       groupState: { volume: 29, mute: false } }
     */
     console.log(">> transport-state change on %s [%s/%s]", msg.roomName, msg.state.zoneState, msg.state.playerState);
-    
+    // console.log(msg);
     // these events are emitted more frequently than just on track and state change
     var doEmit = false;
 
@@ -119,6 +155,23 @@ discovery.on("transport-state", function(msg) {
         console.log("now playing: “%s” by “%s” on “%s” [%s]", msg.state.currentTrack.title, msg.state.currentTrack.artist, msg.state.currentTrack.album, msg.state.trackNo);
         console.log("    up next: “%s” by “%s” on “%s”", msg.state.nextTrack.title, msg.state.nextTrack.artist, msg.state.nextTrack.album);
         console.log("elapsed: %s", msg.state.elapsedTimeFormatted);
+        
+        publish("transport-state", {
+            room:      msg.roomName,
+            zoneState: msg.state.zoneState,
+            trackNo:   msg.state.trackNo,
+            
+            currentTrack: {
+                title:  msg.state.currentTrack.title,
+                artist: msg.state.currentTrack.artist,
+                album:  msg.state.currentTrack.album,
+            },
+            nextTrack: {
+                title:  msg.state.nextTrack.title,
+                artist: msg.state.nextTrack.artist,
+                album:  msg.state.nextTrack.album,
+            },
+        });
     }
 });
 
