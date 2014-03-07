@@ -12,14 +12,15 @@ function _dump(label) {
     };
 }
 
-function publish(event, body) {
+function publish(event, room, body) {
     request(
         {
             url: "http://example.com:7000/publish/78f0e717-429e-4c92-8ade-4c3b3698c4a7",
             method: "POST",
             json: {
                 event: event,
-                body: body,
+                room:  room,
+                body:  body,
             },
         },
         function (err, resp) {
@@ -84,7 +85,7 @@ discovery.on("queue-changed", function(msg) {
             });
         });
         
-        publish("queue-changed", pubBody);
+        publish("queue-changed", player.roomName, pubBody);
     });
 });
 
@@ -158,7 +159,7 @@ discovery.on("transport-state", function(msg) {
         console.log("    up next: “%s” by “%s” on “%s”", msg.state.nextTrack.title, msg.state.nextTrack.artist, msg.state.nextTrack.album);
         console.log("elapsed: %s", msg.state.elapsedTimeFormatted);
         
-        publish("transport-state", {
+        publish("transport-state", msg.roomName, {
             room:      msg.roomName,
             zoneState: msg.state.zoneState,
             trackNo:   msg.state.trackNo,
