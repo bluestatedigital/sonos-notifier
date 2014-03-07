@@ -27,7 +27,9 @@ function publish(event, body) {
             if (err) {
                 console.log(["error publishing", event, body]);
                 
-                console.log(resp.statusCode);
+                if (resp) {
+                    console.log(resp.statusCode);
+                }
                 
                 console.error(err);
             }
