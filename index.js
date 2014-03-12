@@ -13,7 +13,6 @@ var discovery = new (require("sonos-discovery"))();
 
 var currentlyPlaying = {};
 var currentState = {};
-var coordinators = [];
 
 function _dump(label) {
     return function() {
@@ -64,11 +63,7 @@ function publish(event, room, body) {
 discovery.on("topology-change", function(topologies) {
     console.log(">> topology-change");
     
-    coordinators = [];
-    
     topologies.forEach(function(msg) {
-        coordinators.push(msg.coordinator.uuid);
-        
         console.log(">>>> topology-change: %s", discovery.players[msg.uuid].roomName);
         console.log("coordinator: %s (%s)", msg.coordinator.uuid, msg.coordinator.roomName);
         
@@ -76,16 +71,12 @@ discovery.on("topology-change", function(topologies) {
             console.log("     member %s (%s)", member.uuid, member.roomName);
         });
     });
-    
-    console.log("<<< " + coordinators);
 });
 
 discovery.on("queue-changed", function(msg) {
-    var doEmit = coordinators.indexOf(msg.uuid) > -1;
+    var player = discovery.players[msg.uuid];
 
-    if (doEmit) {
-        var player = discovery.players[msg.uuid];
-
+    if (player.coordinator.uuid == msg.uuid) { // emit only for coordinators
         console.log(">> queue-changed event for %s", player.roomName);
         
         player.getQueue(0, undefined, function(succeeded, result) {
@@ -157,7 +148,8 @@ discovery.on("transport-state", function(msg) {
 
     // console.log(msg);
     // these events are emitted more frequently than just on track and state change
-    var doEmit = coordinators.indexOf(msg.uuid) > -1;
+    
+    var doEmit = (msg.uuid == msg.coordinator); // emit only for coordinator
 
     if (doEmit && (currentState[msg.uuid] !== msg.state.playerState)) {
         currentState[msg.uuid] = msg.state.playerState;
