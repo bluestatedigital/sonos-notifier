@@ -13,6 +13,7 @@ var discovery = new (require("sonos-discovery"))();
 
 var currentlyPlaying = {};
 var currentState = {};
+var coordinators = [];
 
 function _dump(label) {
     return function() {
@@ -63,39 +64,48 @@ function publish(event, room, body) {
 discovery.on("topology-change", function(topologies) {
     console.log(">> topology-change");
     
+    coordinators = [];
+    
     topologies.forEach(function(msg) {
-        console.log(">>>> topology-change: %s", discovery.players[msg.uuid].roomName);
+        coordinators.push(msg.coordinator.uuid);
         
+        console.log(">>>> topology-change: %s", discovery.players[msg.uuid].roomName);
         console.log("coordinator: %s (%s)", msg.coordinator.uuid, msg.coordinator.roomName);
         
         msg.members.forEach(function(member) {
             console.log("     member %s (%s)", member.uuid, member.roomName);
         });
     });
+    
+    console.log("<<< " + coordinators);
 });
 
 discovery.on("queue-changed", function(msg) {
-    var player = discovery.players[msg.uuid];
+    var doEmit = coordinators.indexOf(msg.uuid) > -1;
 
-    console.log(">> queue-changed event for %s", player.roomName);
-    
-    player.getQueue(0, undefined, function(succeeded, result) {
-        var pubBody = {
-            queue_items: [],
-        };
+    if (doEmit) {
+        var player = discovery.players[msg.uuid];
+
+        console.log(">> queue-changed event for %s", player.roomName);
         
-        result.items.forEach(function(item) {
-            console.log("queue item: “%s” by “%s” on “%s”", item.title, item.artist, item.album);
+        player.getQueue(0, undefined, function(succeeded, result) {
+            var pubBody = {
+                queue_items: [],
+            };
             
-            pubBody.queue_items.push({
-                title: item.title,
-                artist: item.artist,
-                album: item.album,
+            result.items.forEach(function(item) {
+                console.log("queue item: “%s” by “%s” on “%s”", item.title, item.artist, item.album);
+                
+                pubBody.queue_items.push({
+                    title: item.title,
+                    artist: item.artist,
+                    album: item.album,
+                });
             });
+            
+            publish("queue-changed", player.roomName, pubBody);
         });
-        
-        publish("queue-changed", player.roomName, pubBody);
-    });
+    }
 });
 
 // discovery.on("notify", function(msg) { // doesn't seem to be useful
@@ -144,12 +154,12 @@ discovery.on("transport-state", function(msg) {
       coordinator: 'RINCON_000E58F2480601400',
       groupState: { volume: 29, mute: false } }
     */
-    console.log(">> transport-state change on %s [%s/%s]", msg.roomName, msg.state.zoneState, msg.state.playerState);
+
     // console.log(msg);
     // these events are emitted more frequently than just on track and state change
-    var doEmit = false;
+    var doEmit = coordinators.indexOf(msg.uuid) > -1;
 
-    if (currentState[msg.uuid] !== msg.state.playerState) {
+    if (doEmit && (currentState[msg.uuid] !== msg.state.playerState)) {
         currentState[msg.uuid] = msg.state.playerState;
         
         doEmit = true;
@@ -157,13 +167,15 @@ discovery.on("transport-state", function(msg) {
     
     var currentTrackUri = (msg.state.currentTrack.Uri || msg.state.currentTrack.uri);
     
-    if (! currentlyPlaying[msg.uuid] || currentlyPlaying[msg.uuid] !== currentTrackUri) {
+    if (doEmit && (! currentlyPlaying[msg.uuid] || currentlyPlaying[msg.uuid] !== currentTrackUri)) {
         currentlyPlaying[msg.uuid] = currentTrackUri;
         
         doEmit = true;
     }
     
     if (doEmit) {
+        console.log(">> transport-state change on %s [%s/%s]", msg.roomName, msg.state.zoneState, msg.state.playerState);
+        
         console.log("now playing: “%s” by “%s” on “%s” [%s]", msg.state.currentTrack.title, msg.state.currentTrack.artist, msg.state.currentTrack.album, msg.state.trackNo);
         console.log("    up next: “%s” by “%s” on “%s”", msg.state.nextTrack.title, msg.state.nextTrack.artist, msg.state.nextTrack.album);
         console.log("elapsed: %s", msg.state.elapsedTimeFormatted);
