@@ -1,3 +1,11 @@
+// physical location of the Sonos system, such as "Boston"
+var systemLocation = process.argv[2];
+
+if (! systemLocation) {
+    console.log("usage: " + process.argv[1] + " <location>");
+    process.exit(1);
+}
+
 var util    = require("util");
 var request = require("request");
 
@@ -18,9 +26,10 @@ function publish(event, room, body) {
             url: "http://example.com:7000/publish/78f0e717-429e-4c92-8ade-4c3b3698c4a7",
             method: "POST",
             json: {
-                event: event,
-                room:  room,
-                body:  body,
+                event:    event,
+                location: systemLocation,
+                room:     room,
+                body:     body,
             },
         },
         function (err, resp) {
