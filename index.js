@@ -1,8 +1,9 @@
 // physical location of the Sonos system, such as "Boston"
-var systemLocation = process.argv[2];
+var hubotUrl = process.argv[2];
+var systemLocation = process.argv[3];
 
-if (! systemLocation) {
-    console.log("usage: " + process.argv[1] + " <location>");
+if (! systemLocation || ! hubotUrl) {
+    console.log("usage: " + process.argv[1] + " <hubotUrl> <location>");
     process.exit(1);
 }
 
@@ -21,9 +22,11 @@ function _dump(label) {
 }
 
 function publish(event, room, body) {
+    console.log("*** publishing event " + event);
+    
     request(
         {
-            url: "http://example.com:7000/publish/78f0e717-429e-4c92-8ade-4c3b3698c4a7",
+            url: hubotUrl,
             method: "POST",
             json: {
                 event:    event,
